@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { LuPackage } from 'react-icons/lu';
 import { IoDocumentsOutline } from 'react-icons/io5';
 import { RxReload } from 'react-icons/rx';
-import { docsData, pkgData, discountData, fetchShippingRates } from '../data/shippingRates';
+import { docsData, pkgData, fetchShippingRates } from '../data/shippingRates';
 
 export default function ShippingRates() {
     const [active, setActive] = useState<'docs' | 'pkg'>('docs');
@@ -13,7 +13,6 @@ export default function ShippingRates() {
     const [selectedWeight, setSelectedWeight] = useState(0.5);
     const [rateData, setRateData] = useState<{ original: number; discounted: number; discountDollar: number }>({ original: 0, discounted: 0, discountDollar: 0 });
     const [rate, setRate] = useState<string | null>(null); // default = null
-    const selectedCrypto = 'USD';
 
 
 

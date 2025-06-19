@@ -1,4 +1,3 @@
-import Image from "next/image";
 import ShippingRates from "./components/ShippingRates";
 
 export default function Home() {
