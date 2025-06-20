@@ -161,7 +161,7 @@ export default function ShippingRates() {
                 <div className='w-full pl-16 pr-14'>
                     <div className='flex my-1 flex-col sm:flex-row gap-4 items-center justify-around w-full rounded-3xl'>
 
-                        <div className="flex items-center justify-center w-[324px] bg-white px-4 py-2.5 rounded-3xl  shadow-md  mb-0">
+                        <div className="flex items-center justify-center w-[324px] bg-white px-4 py-2.5 rounded-3xl sm:rounded-br-none  shadow-md  mb-0">
                             <div className="flex items-center  gap-2">
                                 {/* <select className="px-2 py-1.5 border border-gray-300 rounded-full text-sm focus:outline-none">
             <option>Select Country</option>
@@ -278,7 +278,7 @@ export default function ShippingRates() {
                 <div className="relative w-full max-w-md my-1">
                     <div className="absolute left-1/2 -translate-x-1/2 -top-5 z-10">
                         <div
-                            className="w-10 h-10 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-sm cursor-pointer"
+                            className="w-10 h-10 rounded-full bg-white  border-bg border-[3px] flex items-center justify-center shadow-sm cursor-pointer"
                             onClick={() => window.location.reload()}
                         >
                             <span className="text-gray-700 font-semibold hover:text-[#ff6b35] transition-transform duration-1000 hover:rotate-[750deg] transform-gpu">
