@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 class ShippingRateBase(BaseModel):
@@ -5,12 +6,16 @@ class ShippingRateBase(BaseModel):
     weight: float
     type: str
     original_rate: float
-    discount_rate: str
+    discount_rate: Optional[str] = None
+    source: str
+    student: Optional[bool] = False
+    zone: Optional[str] = None
 
 class ShippingRateCreate(ShippingRateBase):
     pass
 
 class ShippingRateOut(ShippingRateBase):
     id: int
+
     class Config:
-        orm_mode = True 
+        orm_mode = True

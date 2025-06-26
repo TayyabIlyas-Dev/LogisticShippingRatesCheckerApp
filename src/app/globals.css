@@ -50,7 +50,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(145deg, #f26522, #77787b53); /* Orange gradient thumb */
+  background: linear-gradient(145deg, #f26522, #77787b6f); /* Orange gradient thumb */
   border-radius: 10px;
   box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.05);
   transition: background 0.3s ease;
@@ -60,3 +60,25 @@ body {
   background: linear-gradient(145deg, #e65c2f, #ff6b35); /* Hover glow */
 }
 
+
+
+
+.custom-scroll::-webkit-scrollbar {
+  width: 2px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, #e6ebf3, #f7f9fc);
+  border-radius: 100px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(145deg, #f26522, #c8c8ca7f);
+  border-radius: 10px;
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.05);
+  transition: background 0.3s ease;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(145deg, #e65d2f9f, #ff8c00);
+}

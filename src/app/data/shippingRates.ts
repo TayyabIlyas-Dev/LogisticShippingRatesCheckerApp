@@ -1,6 +1,8 @@
 export type ShippingRate = {
   original: number;
   discounted: number;
+  student?: boolean; // NEW
+  zone?: string | null; // NEW
 };
 
 export let docsData: Record<string, ShippingRate> = {};
@@ -8,66 +10,52 @@ export let pkgData: Record<string, ShippingRate> = {};
 export let discountData: Record<string, number> = {};
 
 // ✅ Fetch from FastAPI and extract all unique countries & weights too
+// fetchShippingRates.ts
 export async function fetchShippingRates(): Promise<{
   countries: string[];
   weights: number[];
+  docsData: Record<string, ShippingRate>;
+  pkgData: Record<string, ShippingRate>;
 }> {
   try {
     const res = await fetch('http://127.0.0.1:8000/all-rates');
     const json = await res.json();
 
     const records = json.data;
-
-    // Clear previous data
-    docsData = {};
-    pkgData = {};
-    discountData = {};
-
+    const docs: Record<string, ShippingRate> = {};
+    const pkg: Record<string, ShippingRate> = {};
     const countrySet = new Set<string>();
     const weightSet = new Set<number>();
 
     for (const item of records) {
-      const country = item.Country;
-      const weight = item.Weight;
-      const type = item.Type; // 'docs' | 'non-docs'
-      const original = item["Retail Rate"];
-      const discountedRaw = item["Discount Rate"];
-      const key = `${country}_${weight}`;
-
+      const key = `${item.Country}_${item.Weight}`;
       const discounted =
-        discountedRaw === "No discount available"
-          ? original
-          : parseFloat(discountedRaw);
+        item["Discount Rate"] === "No discount available"
+          ? item["Retail Rate"]
+          : parseFloat(item["Discount Rate"]);
 
-      const shippingRate: ShippingRate = {
-        original,
+      const rate: ShippingRate = {
+        original: item["Retail Rate"],
         discounted,
+        student: item.Student ?? false,
+        zone: item.Zone ?? null,
       };
 
-      if (type === "docs") {
-        docsData[key] = shippingRate;
-      } else if (type === "non-docs") {
-        pkgData[key] = shippingRate;
-      }
+      if (item.Type === "docs") docs[key] = rate;
+      else if (item.Type === "non-docs") pkg[key] = rate;
 
-      if (discountedRaw !== "No discount available") {
-        discountData[key] = original - discounted;
-      }
-
-      // Collect unique values
-      countrySet.add(country);
-      weightSet.add(weight);
+      countrySet.add(item.Country);
+      weightSet.add(item.Weight);
     }
 
-    console.log("✅ Shipping rates parsed and stored");
-
-    // Return unique sorted lists
     return {
       countries: Array.from(countrySet).sort(),
       weights: Array.from(weightSet).sort((a, b) => a - b),
+      docsData: docs,
+      pkgData: pkg,
     };
-  } catch (error) {
-    console.error("❌ Failed to fetch or parse shipping rates:", error);
-    return { countries: [], weights: [] };
+  } catch (err) {
+    console.error("❌ Failed to fetch or parse shipping rates:", err);
+    return { countries: [], weights: [], docsData: {}, pkgData: {} };
   }
 }
