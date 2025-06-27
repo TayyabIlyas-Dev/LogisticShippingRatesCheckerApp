@@ -450,7 +450,6 @@ export default function ShippingRates() {
 
                             {/* Toggle Buttons */}
                             <div className="inline-flex items-center bg-[#f2f4f9] p-1 rounded-full border gap-1 border-gray-300 text-[10px] font-medium">
-                                {/* Docs Button */}
                                 <button
                                     onClick={() => setActive('docs')}
                                     className={`px-3 py-1.5 rounded-full transition-all duration-300 ${active === 'docs'
@@ -461,7 +460,7 @@ export default function ShippingRates() {
                                     Docs
                                 </button>
 
-                                {/* PKG Button */}
+                                {/* PKG Toggle */}
                                 <button
                                     onClick={() => setActive('pkg')}
                                     className={`px-3 py-1.5 rounded-full transition-all duration-300 ${active === 'pkg'
@@ -472,7 +471,6 @@ export default function ShippingRates() {
                                     PKG
                                 </button>
 
-                                {/* Refresh Icon */}
                             </div>
                         </div>
                     </div>
