@@ -29,8 +29,10 @@ export default function ShippingRates() {
     const [studentChecked, setStudentChecked] = useState(false);
     const [skippedLines, setSkippedLines] = useState<string[]>([]);
     const [showWeightOptions, setShowWeightOptions] = useState(false);
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [countries, setCountries] = useState<string[]>([]);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const [weights, setWeights] = useState<number[]>([]);
     const [showOptions, setShowOptions] = useState(false);
     const [highlightCountryIndex, setHighlightCountryIndex] = useState<number>(-1);
