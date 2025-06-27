@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { LuPackage } from 'react-icons/lu';
 import { IoDocumentsOutline } from 'react-icons/io5';
 import { RxReload } from 'react-icons/rx';
-import { docsData, pkgData, fetchShippingRates } from '../data/shippingRates';
+import {  fetchShippingRates } from '../data/shippingRates';
 
 export default function ShippingRates() {
     const [active, setActive] = useState<'docs' | 'pkg'>('docs');
