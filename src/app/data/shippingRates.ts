@@ -5,9 +5,9 @@ export type ShippingRate = {
   zone?: string | null; // NEW
 };
 
-export let docsData: Record<string, ShippingRate> = {};
-export let pkgData: Record<string, ShippingRate> = {};
-export let discountData: Record<string, number> = {};
+export const docsData: Record<string, ShippingRate> = {};
+export const pkgData: Record<string, ShippingRate> = {};
+export const discountData: Record<string, number> = {};
 
 // ✅ Fetch from FastAPI and extract all unique countries & weights too
 // fetchShippingRates.ts
