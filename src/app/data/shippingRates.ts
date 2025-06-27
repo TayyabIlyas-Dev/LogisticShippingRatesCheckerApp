@@ -9,7 +9,6 @@ export const docsData: Record<string, ShippingRate> = {};
 export const pkgData: Record<string, ShippingRate> = {};
 export const discountData: Record<string, number> = {};
 
-// ✅ Fetch from FastAPI and extract all unique countries & weights too
 // fetchShippingRates.ts
 export async function fetchShippingRates(): Promise<{
   countries: string[];
@@ -18,7 +17,7 @@ export async function fetchShippingRates(): Promise<{
   pkgData: Record<string, ShippingRate>;
 }> {
   try {
-    const res = await fetch('http://127.0.0.1:8000/all-rates');
+    const res = await fetch('https://c8ebe687-3159-412a-b8ef-96340f3a69dc-00-1gvs8vvnrpohg.sisko.replit.dev/all-rates');
     const json = await res.json();
 
     const records = json.data;

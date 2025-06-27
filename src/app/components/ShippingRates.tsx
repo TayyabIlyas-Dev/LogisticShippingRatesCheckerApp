@@ -162,7 +162,7 @@ export default function ShippingRates() {
         formData.append('student', String(studentChecked));
 
         try {
-            const res = await fetch('http://127.0.0.1:8000/upload-rates', {
+            const res = await fetch('https://c8ebe687-3159-412a-b8ef-96340f3a69dc-00-1gvs8vvnrpohg.sisko.replit.dev/upload-rates', {
                 method: 'POST',
                 body: formData,
             });
