@@ -5,10 +5,11 @@ export default function Home() {
 <>
 
 <div>
-
   <div>
     <ShippingRates/>
+
   </div>
+  
 </div>
 </>
   );
