@@ -40,7 +40,7 @@ export default function PageLoader() {
                 </div>
                 <p
                     className={`absolute -bottom-[56%] left-[41%] px-0 py-2 z-50 text-2xl font-bold bg-transparent
-        transition-opacity duration-500
+        transition-opacity duration-500 hidden xl:block
         ${showText ? "opacity-100" : "opacity-0"}
       `}
                 >                    <span className="textColor ">
