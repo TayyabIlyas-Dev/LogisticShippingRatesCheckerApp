@@ -82,3 +82,18 @@ body {
 .custom-scroll::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(145deg, #e65d2f9f, #ff8c00);
 }
+
+/* floating triangles */
+@keyframes float {
+  0% { transform: translateY(0) rotate(50deg); }
+  50% { transform: translateY(-6px) rotate(50deg); }
+  100% { transform: translateY(0) rotate(50deg); }
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+
+
+
+

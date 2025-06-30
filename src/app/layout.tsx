@@ -4,6 +4,7 @@ import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import PageLoader from "./components/Pageloader";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -33,6 +34,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased font-poppins`}
       >
+                <PageLoader />
+
         <Navbar/>
         {children}
         <Footer/>

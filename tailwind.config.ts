@@ -8,6 +8,7 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      
       fontFamily: {
         poppins: ["var(--font-poppins)", "sans-serif"],
         geist: ["var(--font-geist-sans)", "sans-serif"],

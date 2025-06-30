@@ -8,10 +8,11 @@ import { RxReload } from 'react-icons/rx';
 import { fetchShippingRates } from '../data/shippingRates';
 import { SignedIn } from '@clerk/nextjs';
 import { useUser } from "@clerk/nextjs";
+import AniamtedTriangle from './3DTriangles';
 
 
 export default function ShippingRates() {
-    const [active, setActive] = useState<'docs' | 'pkg'>('docs');
+    const [active, setActive] = useState<'docs' | 'pkg'>('pkg');
     const [selectedCountry, setSelectedCountry] = useState('');
     const [selectedWeight, setSelectedWeight] = useState<number | undefined>(undefined);
     const [rateData, setRateData] = useState<{ original: number; discounted: number; discountDollar: number }>({ original: 0, discounted: 0, discountDollar: 0 });
@@ -196,93 +197,124 @@ export default function ShippingRates() {
     const isAdmin = user?.publicMetadata?.role === "admin";
 
     return (
-        <div className="min-h-screen flex justify-center bg-gradient-to-b from-[#e8edf5] to-[#e6ebf3] px-4 py-2">
+        <div className="min-h-screen flex justify-center px-4 h- pb-10 pt-20 relative"
+            style={{
+                background: 'radial-gradient(circle at center, #f2f7fc 12%, #d7e2f4 70%, #c0d0e4 95%)',
+            }}
+        >
+            <AniamtedTriangle
+                className1="absolute top-[30%] left-[24%] w-12 h-16 -rotate-[120deg] z-10 "
+                className2="absolute top-[40%] left-[28%] w-20 h-36 animate-float z-0"
+            />
+
+            <AniamtedTriangle
+                className1="absolute top-[28%] left-[26%] w-40 h-48  z-20 rotate-[40deg] "
+                className2="absolute top-[27%] left-[25%] w-14 h-14 animate-float z-20"
+            />
+
+            <AniamtedTriangle
+                className1="absolute top-[58%] right-[24%] w-52 h-64  z-20 rotate-[90deg] "
+                className2="absolute top-[59%] right-[27%] w-14 h-14 animate-float z-20"
+            />
+       
+            <AniamtedTriangle
+                className1="absolute top-[55%] right-[22%] w-20 h-20  z-20 -rotate-[60deg] "
+                className2="absolute top-[73%] right-[29%] w-32 h-44 rotate-[120deg] z-20"
+            />
+         
+            <AniamtedTriangle
+                className1="absolute top-[36%] left-[26%] w-20 h-20  z-20 -rotate-[60deg] "
+                className2="absolute top-[76%] right-[26%] w-14 h-14 animate-float z-20"
+            />
+      
+
+
             <div className="w-full max-w-xl flex items-center  flex-col relative">
                 <h1 className="py-3 text-2xl md:text-3xl font-semibold text-center leading-[1] mb-2 text-black tracking-tight uppercase">Shipping Rates</h1>
 
                 <SignedIn>      {/* Excel Upload UI */}
                     {isAdmin ? (
                         <>
-                        <form onSubmit={handleUpload} className="mb-6 flex flex-col sm:flex-row flex-wrap items-center gap-3 w-full justify-center">
-                            {/* Dropdown for file type */}
+                            <form onSubmit={handleUpload} className="mb-6 flex flex-col sm:flex-row flex-wrap items-center gap-3 w-full justify-center">
+                                {/* Dropdown for file type */}
 
-                           <div className='flex gap-3 items-center w-full'>
-                             
-                            <div className="flex gap-2  items-center text-black">
-                                <label className="text-xs font-semibold">Type:</label>
-                                <select
-                                    value={uploadType}
-                                    onChange={e => setUploadType(e.target.value as any)}
-                                    className="px-2 py-1 border border-gray-300 rounded-full text-xs focus:outline-none"
-                                    disabled={uploading}
-                                >
-                                    <option value="retail">PKG Rates</option>
-                                    <option value="pkg_discount">PKG Discount</option>
-                                    <option value="docs_discount">Docs Discount</option>
-                                    <option value="student">Student Discount</option>
-                                    <option value="zones">Zones Countries</option>
-                                    <option value="zones_docs">Zones Docs</option>       {/* ✅ NEW */}
-                                    <option value="zones_pkg">Zones PKG</option>         {/* ✅ NEW */}
-                                    <option value="docs">Docs Rates</option>
-                                </select>
+                                <div className='flex gap-3 items-center w-full'>
 
-                            </div>
+                                    <div className="flex gap-2  items-center text-black">
+                                        <label className="text-xs font-semibold">Type:</label>
+                                        <select
+                                            value={uploadType}
+                                            onChange={e => setUploadType(e.target.value as any)}
+                                            className="px-2 py-1 border border-gray-300 rounded-full text-xs focus:outline-none"
+                                            disabled={uploading}
+                                        >
+                                            <option value="retail">PKG Rates</option>
+                                            <option value="pkg_discount">PKG Discount</option>
+                                            <option value="docs_discount">Docs Discount</option>
+                                            <option value="student">Student Discount</option>
+                                            <option value="zones">Zones Countries</option>
+                                            <option value="zones_docs">Zones Docs</option>       {/* ✅ NEW */}
+                                            <option value="zones_pkg">Zones PKG</option>         {/* ✅ NEW */}
+                                            <option value="docs">Docs Rates</option>
+                                        </select>
 
-                            {/* Conditionally show student checkbox */}
-                            {uploadType === 'student' && (
-                                <label className="flex items-center gap-1 text-xs font-medium">
+                                    </div>
+
+                                    {/* Conditionally show student checkbox */}
+                                    {uploadType === 'student' && (
+                                        <label className="flex items-center gap-1 text-xs font-medium">
+                                            <input
+                                                type="checkbox"
+                                                checked={studentChecked}
+                                                onChange={(e) => setStudentChecked(e.target.checked)}
+                                                className="form-checkbox rounded text-[#ff6b35]"
+                                            />
+                                            I'm uploading a student file
+                                        </label>
+                                    )}
+
                                     <input
-                                        type="checkbox"
-                                        checked={studentChecked}
-                                        onChange={(e) => setStudentChecked(e.target.checked)}
-                                        className="form-checkbox rounded text-[#ff6b35]"
+                                        type="file"
+                                        accept=".xlsx,.xls"
+                                        ref={fileInputRef}
+                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#ff6b35] file:text-white hover:file:bg-[#59595c]"
+                                        disabled={uploading}
                                     />
-                                    I'm uploading a student file
-                                </label>
+
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-[#ff6b35] text-white rounded-lg font-semibold text-sm hover:bg-[#59595c] duration-300 transition"
+                                        disabled={uploading}
+                                    >
+                                        {uploading ? 'Uploading...' : 'Upload Excel'}
+                                    </button>
+                                </div>
+                            </form>
+                            {/* Status message */}
+                            {uploadMsg && (
+                                <div className={`mb-4 text-center text-sm ${uploadMsg.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>{uploadMsg}</div>
                             )}
+                            {skippedLines.length > 0 && (
+                                <div className="bg-white border border-gray-300 rounded p-4 text-sm max-h-48 overflow-y-auto w-full shadow">
+                                    <div className="font-semibold text-gray-700 mb-1">⚠️ Skipped Rows:</div>
+                                    <ul className="list-disc pl-5 text-gray-600">
+                                        {skippedLines.map((line, idx) => (
+                                            <li key={idx}>{line}</li>
+                                        ))}
+                                    </ul>
+                                </div>
 
-                            <input
-                                type="file"
-                                accept=".xlsx,.xls"
-                                ref={fileInputRef}
-                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#ff6b35] file:text-white hover:file:bg-[#59595c]"
-                                disabled={uploading}
-                            />
 
-                            <button
-                                type="submit"
-                                className="px-4 py-2 bg-[#ff6b35] text-white rounded-lg font-semibold text-sm hover:bg-[#59595c] duration-300 transition"
-                                disabled={uploading}
-                            >
-                                {uploading ? 'Uploading...' : 'Upload Excel'}
-                            </button>
-                            </div>
-                        </form>
-                        {/* Status message */}
-                        {uploadMsg && (
-                            <div className={`mb-4 text-center text-sm ${uploadMsg.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>{uploadMsg}</div>
-                        )}
-                        {skippedLines.length > 0 && (
-                            <div className="bg-white border border-gray-300 rounded p-4 text-sm max-h-48 overflow-y-auto w-full shadow">
-                                <div className="font-semibold text-gray-700 mb-1">⚠️ Skipped Rows:</div>
-                                <ul className="list-disc pl-5 text-gray-600">
-                                    {skippedLines.map((line, idx) => (
-                                        <li key={idx}>{line}</li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                        
-                        )}
+                            )}
                         </>
-                        
+
                     ) : (
                         <p className="text-center text-sm text-red-600">
-                          You are not a Admin So U not have permission to Upload Rates & discounts 
+                            You are not a Admin So U not have permission to Upload Rates & discounts
                         </p>
                     )}
 
-                    
+
                 </SignedIn>
 
                 {/* Top Controls */}
