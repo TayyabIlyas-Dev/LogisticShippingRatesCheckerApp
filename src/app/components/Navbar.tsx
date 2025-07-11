@@ -32,7 +32,7 @@ export default function Navbar() {
             <SignedOut>
               <SignInButton>
                 <button
-                  className="px-4 py-1.5 rounded-full font-semibold text-white bg-[#f97316]"
+                  className="px-4 py-1.5 rounded-full font-semibold text-white bg-[#f97316] hover:bg-[#59595c] duration-500 transition"
                 >Sign In</button>
               </SignInButton>
 
@@ -41,7 +41,7 @@ export default function Navbar() {
             <SignedIn>
               <SignOutButton>
                 <button
-                  className="px-4 py-1.5 rounded-full font-semibold text-white bg-[#f97316]"
+                  className="px-4 py-1.5 rounded-full font-semibold text-white bg-[#f97316] hover:bg-[#59595c] duration-500 transition"
                 >Sign Out</button>
               </SignOutButton>
               <UserButton afterSignOutUrl="/" />
@@ -76,7 +76,7 @@ export default function Navbar() {
 
           <SignedOut>
             <SignInButton>
-              <button className="w-full px-3 py-2 rounded bg-[#f97316] text-white hover:bg-[#f97316]">Sign In</button>
+              <button className="w-full px-3 py-2 rounded-3xl bg-[#f97316] text-white  hover:bg-[#59595c] duration-500 transition">Sign In</button>
             </SignInButton>
     
           </SignedOut>
@@ -85,7 +85,7 @@ export default function Navbar() {
             <div className="flex items-center space-x-2">
               <UserButton afterSignOutUrl="/" />
               <SignOutButton>
-                <button className="px-3 py-2 rounded bg-red-500 text-white hover:bg-red-600">Sign Out</button>
+                <button className="px-3 py-2 rounded-3xl bg-[#f97316] text-white  hover:bg-[#59595c] duration-500 transition">Sign Out</button>
               </SignOutButton>
             </div>
           </SignedIn>

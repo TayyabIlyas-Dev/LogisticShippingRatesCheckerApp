@@ -5,9 +5,8 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import os
-from sqlalchemy import func  # Add this import at the top
-
-
+import re
+from sqlalchemy import func ,cast, String  # Add this import at the top
 from . import crud, models, schemas
 from .models import Base
 
@@ -28,6 +27,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def normalize_zone(zone_str: str) -> str:
+    zone_float = float(zone_str)
+    return str(int(zone_float)) if zone_float.is_integer() else str(zone_float)
+
 
 # Dependency
 def get_db():
@@ -53,7 +58,10 @@ def get_all_rates(db: Session = Depends(get_db)):
             "Retail Rate": r.original_rate,
             "Discount Rate": r.discount_rate,
             "Student": r.student,
-            "Zone": r.zone
+            "Zone": r.zone,
+            "Addkg": r.addkg,
+            "Surcharges": r.surcharges  
+
         } for r in rates
     ]}
 
@@ -64,6 +72,7 @@ def upload_rates(
     file: UploadFile = File(...),
     file_type: str = Form(...),
     student: bool = Form(False),
+       sheet: int = Form(1),
     db: Session = Depends(get_db)
 ):
     if not file.filename.endswith((".xlsx", ".xls")):
@@ -76,8 +85,9 @@ def upload_rates(
         temp_path = f"temp_{file.filename}"
         with open(temp_path, "wb") as f:
             f.write(file.file.read())
-        df = pd.read_excel(temp_path, engine="openpyxl")
-        os.remove(temp_path)
+            sheet_index = sheet - 1  # because pandas uses 0-based index
+            df = pd.read_excel(temp_path, sheet_name=sheet_index, engine="openpyxl")
+        # os.remove(temp_path)
 
         # 🔹 ZONES FILE
         if file_type == "zones":
@@ -120,29 +130,52 @@ def upload_rates(
                 "skipped_rows": skipped_rows
             }
 
-        # 🔹 ZONES_DOCS or ZONES_PKG FILES
+        # 🔹 ZONES_DOCS or ZONES_PKG FILES (wide format supported)
         if file_type in ["zones_docs", "zones_pkg"]:
-            expected_columns = ["ZONE", "WEIGHT", "RETAIL RATE"]
-            if not all(col in df.columns for col in expected_columns):
-                raise HTTPException(status_code=400, detail="File must contain ZONE, WEIGHT, RETAIL RATE columns.")
+            if "WEIGHT" not in df.columns:
+                raise HTTPException(status_code=400, detail="Excel must contain 'WEIGHT' column as first column.")
+
+            df = pd.melt(df, id_vars=["WEIGHT"], var_name="ZONE", value_name="RETAIL RATE")
+            df.dropna(subset=["RETAIL RATE"], inplace=True)
 
             inserted = updated = skipped = 0
             skipped_rows = []
 
             for _, row in df.iterrows():
                 try:
-                    zone = str(int(float(row["ZONE"]))).strip()
+                    zone_raw = str(row["ZONE"]).strip()
+
+                    # ✅ STRICT: Must start with "Zone" (case-insensitive)
+                    if not zone_raw.lower().startswith("zone"):
+                        raise ValueError(f"Zone format invalid: '{zone_raw}'")
+                    
+
+
+                    zone_str = re.sub(r"(?i)zone", "", zone_raw).strip()
+
+                    # ✅ STRICT: Must be numeric
+                    if not re.fullmatch(r"\d+(\.\d+)?", zone_str):
+                        raise ValueError(f"Zone value not numeric: '{zone_str}'")
+
+                    zone_float = float(zone_str)
+                    zone = str(int(zone_float)) if zone_float.is_integer() else str(zone_float)  # ✅ Converts 1.0 → "1"       # Cleaned zone string
+
+
                     weight = float(row["WEIGHT"])
                     retail_rate = float(row["RETAIL RATE"])
                     discount_rate = 0
-                except Exception:
+                except Exception as e:
                     skipped += 1
-                    skipped_rows.append(f"Invalid row format: {row}")
+                    skipped_rows.append(f"⛔ Skipped row due to error: {e} | Row: {row}")
                     continue
+       
+                countries = db.query(models.ShippingRate.country).filter(
+                    cast(models.ShippingRate.zone, String) == zone
+                ).distinct().all()
 
-                countries = db.query(models.ShippingRate.country).filter(models.ShippingRate.zone == zone).distinct().all()
+
                 if not countries:
-                    skipped_rows.append(f"No countries found for zone {zone}")
+                    skipped_rows.append(f"⚠️ No countries found for zone {zone}")
                     continue
 
                 for country_tuple in countries:
@@ -153,7 +186,7 @@ def upload_rates(
                         func.lower(models.ShippingRate.country) == country,
                         models.ShippingRate.weight == weight,
                         models.ShippingRate.type == type_,
-                        models.ShippingRate.zone == zone,
+                        cast(models.ShippingRate.zone, String) == zone,
                         models.ShippingRate.student == False
                     ).first()
 
@@ -189,51 +222,315 @@ def upload_rates(
                 "skipped_rows": skipped_rows
             }
 
-        # 🔹 PKG_DISCOUNT FILE (3-column version)
-        if file_type == "pkg_discount" and set(df.columns) == {"Country", "Weight", "Discount Rate"}:
+
+        if file_type == "pkg_discount":
             inserted = updated = skipped = 0
             skipped_rows = []
 
+            # ✅ Enforce strict structure
+            required_first_column = "COUNTRIES"
+            if df.columns[0].strip().upper() != required_first_column:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"'pkg_discount' must start with '{required_first_column}' column."
+                )
+
+            # ✅ Rename 'COUNTRIES' to standard internal column
+            df = df.rename(columns={df.columns[0]: "Country"})
+
+            # ✅ Ensure weight columns follow pattern (e.g., "1 KG")
+            weight_columns = [col for col in df.columns if col != "Country"]
+            if not weight_columns:
+                raise HTTPException(status_code=400, detail="No weight columns found in 'pkg_discount' file.")
+
+            for col in weight_columns:
+                match = re.fullmatch(r"^\s*\d+(\.\d+)?\s*KG\s*$", col, re.IGNORECASE)
+                if not match:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid weight column name: '{col}'. Must be like '1 KG', '0.5 KG', etc."
+                    )
+
             for _, row in df.iterrows():
-                try:
-                    country = str(row["Country"]).strip().lower()
-                    weight = float(row["Weight"])
-                    discount_rate = float(row["Discount Rate"])
-                except Exception:
-                    skipped += 1
-                    skipped_rows.append(f"Invalid row format: {row}")
-                    continue
+                country = str(row["Country"]).strip().lower()
 
-                existing = db.query(models.ShippingRate).filter(
-                    func.lower(models.ShippingRate.country) == country,
-                    models.ShippingRate.weight == weight,
-                    models.ShippingRate.type == "non-docs",
-                    models.ShippingRate.student == False
-                ).first()
+                for col in weight_columns:
+                    try:
+                        weight_val = float(col.strip().upper().replace("KG", "").strip())
+                        discount_rate = float(row[col])
+                    except Exception:
+                        skipped += 1
+                        skipped_rows.append(f"⛔ Invalid row: {row['Country']} → {col}")
+                        continue
 
-                if existing:
-                    existing.discount_rate = str(discount_rate)
-                    db.commit()
-                    updated += 1
-                else:
-                    skipped += 1
-                    skipped_rows.append(f"{country} - {weight}kg - non-docs (not found)")
+                    existing = db.query(models.ShippingRate).filter(
+                        func.lower(models.ShippingRate.country) == country,
+                        models.ShippingRate.weight == weight_val,
+                        models.ShippingRate.type == "non-docs",
+                        models.ShippingRate.student == False
+                    ).first()
+
+                    if existing:
+                        existing.discount_rate = str(discount_rate)
+                        db.commit()
+                        updated += 1
+                    else:
+                        skipped += 1
+                        skipped_rows.append(f"{country} - {weight_val}kg - non-docs (not found)")
 
             return {
-                "message": f"✅ pkg_discount file processed. Updated: {updated}, Skipped: {skipped}.",
+                "message": f"✅ Strict pkg_discount processed. Updated: {updated}, Skipped: {skipped}.",
                 "skipped_rows": skipped_rows
             }
 
-        # 🧩 FALLBACK for COUNTRY-WEIGHT-RATE FILES
-        if "COUNTRIES" not in df.columns:
-            raise HTTPException(status_code=400, detail="Excel must contain 'COUNTRIES' column.")
+        if file_type == "addkg":
+            # 🔹 Re-read only for ADD KG file to support 2-row horizontal layout
+            df_addkg = pd.read_excel(temp_path, sheet_name=sheet_index, engine="openpyxl", header=None)
 
-        long_df = df.melt(id_vars=["COUNTRIES"], var_name="Weight", value_name="Retail Rate")
-        long_df.rename(columns={"COUNTRIES": "Country"}, inplace=True)
+            if df_addkg.shape[0] < 2:
+                raise HTTPException(status_code=400, detail="ADD KG file must have at least 2 rows: 'COUNTRIES' and 'ADD KG'.")
+
+            header = df_addkg.iloc[0].tolist()  # First row
+            if str(header[0]).strip().upper() != "COUNTRIES":
+                raise HTTPException(status_code=400, detail="First cell must be 'COUNTRIES'.")
+
+            second_row = df_addkg.iloc[1].tolist()
+            if str(second_row[0]).strip().upper() != "ADD KG":
+                raise HTTPException(status_code=400, detail="Second row must start with 'ADD KG' label.")
+
+            countries = header[1:]
+            addkg_values = second_row[1:]
+
+
+            inserted = updated = skipped = 0
+            skipped_rows = []
+
+            for i, country_col in enumerate(countries):
+                if pd.isna(country_col):
+                   continue  # ✅ Skip blank country columns
+
+                addkg_val = addkg_values[i]
+                if pd.isna(addkg_val):
+                    continue  # ✅ Skip blank ADD KG cells
+                country = str(country_col).strip().lower()
+                addkg_val = addkg_values[i]
+
+
+                try:
+                    addkg = float(addkg_val)
+                except:
+                    skipped += 1
+                    skipped_rows.append(f"⛔ Invalid ADD KG value for {country}")
+                    continue
+
+                zone = None  
+                existing_addkg = db.query(models.ShippingRate).filter(
+                    func.lower(models.ShippingRate.country) == country,
+                    models.ShippingRate.type == "add-kg"
+                ).first()
+
+                if existing_addkg:
+                    if existing_addkg.addkg == addkg:
+                        skipped += 1
+                        skipped_rows.append(f"{country} (same addkg)")
+                    else:
+                        existing_addkg.addkg = addkg
+                        db.commit()
+                        updated += 1
+                else:
+                    rate = schemas.ShippingRateCreate(
+                        country=country,
+                        weight=0,
+                        type="add-kg",
+                        original_rate=0,
+                        discount_rate="0",
+                        source="addkg",
+                        student=False,
+                        zone=zone,
+                        addkg=addkg  
+                    )
+                    crud.create_rate(db, rate)
+                    inserted += 1
+
+            return {
+                "message": f"✅ ADD KG file processed. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}.",
+                "skipped_rows": skipped_rows
+            }
+
+        if file_type == "zoneaddkg":
+            df_zoneadd = pd.read_excel(temp_path, sheet_name=sheet_index, engine="openpyxl", header=None)
+
+            if df_zoneadd.shape[0] < 2:
+                raise HTTPException(status_code=400, detail="zoneaddkg file must have at least 2 rows.")
+
+            header = df_zoneadd.iloc[0].tolist()
+            if str(header[0]).strip().upper() != "COUNTRIES":
+                raise HTTPException(status_code=400, detail="First cell must be 'COUNTRIES'.")
+
+            second_row = df_zoneadd.iloc[1].tolist()
+            if str(second_row[0]).strip().upper() != "ADD KG":
+                raise HTTPException(status_code=400, detail="Second row must start with 'ADD KG'.")
+
+            zone_labels = header[1:]
+            addkg_values = second_row[1:]
+
+            inserted = updated = skipped = 0
+            skipped_rows = []
+
+            for i, zone_col in enumerate(zone_labels):
+                if pd.isna(zone_col):
+                    continue
+
+                raw_zone = str(zone_col).strip()
+                zone_match = re.search(r"\d+", raw_zone)
+                if not zone_match:
+                    skipped += 1
+                    skipped_rows.append(f"⚠️ Invalid zone label: {raw_zone}")
+                    continue
+
+                zone = zone_match.group()
+                addkg_val = addkg_values[i]
+                if pd.isna(addkg_val):
+                    continue
+
+                try:
+                    addkg = float(addkg_val)
+                except:
+                    skipped += 1
+                    skipped_rows.append(f"⛔ Invalid ADD KG value for Zone {zone}")
+                    continue
+
+                # 🔍 Get all countries in that zone
+                countries = db.query(models.ShippingRate.country).filter(
+                    cast(models.ShippingRate.zone, String) == zone
+                ).distinct().all()
+
+                if not countries:
+                    skipped += 1
+                    skipped_rows.append(f"⚠️ No countries found for Zone {zone}")
+                    continue
+
+                for country_tuple in countries:
+                    country = str(country_tuple[0]).strip().lower()
+
+
+
+                    existing_addkg = db.query(models.ShippingRate).filter(
+                        func.lower(models.ShippingRate.country) == country,
+                        models.ShippingRate.type == "add-kg",
+                        cast(models.ShippingRate.zone, String) == zone
+                    ).first()
+
+                    if existing_addkg:
+                        if existing_addkg.addkg == addkg:
+                            skipped += 1
+                            skipped_rows.append(f"{country} (same addkg)")
+                        else:
+                            existing_addkg.addkg = addkg
+                            db.commit()
+                            updated += 1
+                    else:
+                        rate = schemas.ShippingRateCreate(
+                            country=country,
+                            weight=0,
+                            type="add-kg",
+                            original_rate=0,
+                            discount_rate="0",
+                            source="zoneaddkg",
+                            student=False,
+                            zone=zone,
+                            addkg=addkg
+                        )
+                        crud.create_rate(db, rate)
+                        inserted += 1
+
+            return {
+                "message": f"✅ ZONE ADD KG file processed. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}.",
+                "skipped_rows": skipped_rows
+            }
+
+        if file_type == "surcharges":
+            df_surcharge = pd.read_excel(temp_path, sheet_name=sheet_index, engine="openpyxl")
+
+            df_surcharge.columns = [col.strip().upper() for col in df_surcharge.columns]
+
+            required_columns = ["COUNTRIES", "SURCHARGES"]
+            missing = [col for col in required_columns if col not in df_surcharge.columns]
+            if missing:
+                raise HTTPException(status_code=400, detail=f"Missing columns in surcharges file: {', '.join(missing)}")
+
+            inserted = updated = skipped = 0
+            skipped_rows = []
+
+            for index, row in df_surcharge.iterrows():
+                country_raw = str(row["COUNTRIES"]).strip()
+                country_normalized = str(re.sub(r'\s+', ' ', country_raw)).strip().lower()
+
+                surcharge_value_raw = str(row["SURCHARGES"]).strip()
+                surcharge_value_clean = surcharge_value_raw.replace("$", "").strip()
+
+                try:
+                    surcharge_value = float(surcharge_value_clean)
+                except:
+                    skipped += 1
+                    skipped_rows.append(f"⛔ Invalid surcharge value for {country_normalized}: {surcharge_value_raw}")
+                    continue
+
+                existing_zone_record = db.query(models.ShippingRate).filter(
+                    func.lower(func.trim(models.ShippingRate.country)) == country_normalized,
+                    models.ShippingRate.zone.isnot(None)
+                ).first()
+
+                zone = existing_zone_record.zone if existing_zone_record else None
+
+                existing = db.query(models.ShippingRate).filter(
+                    func.lower(func.trim(models.ShippingRate.country)) == country_normalized,
+                    models.ShippingRate.weight == 0.0,
+                    models.ShippingRate.type == "sur-charges",
+                    func.coalesce(models.ShippingRate.original_rate, 0) == 0.0,
+                    func.coalesce(models.ShippingRate.addkg, 0) == 0.0
+                ).first()
+
+                if existing:
+                    if abs(existing.surcharges - surcharge_value) < 0.001:
+                        skipped += 1
+                        skipped_rows.append(f"{country_normalized} (no change)")
+                    else:
+                        existing.surcharges = surcharge_value
+                        db.commit()
+                        updated += 1
+                else:
+                    rate = schemas.ShippingRateCreate(
+                        country=country_normalized,
+                        weight=0,
+                        type="sur-charges",
+                        original_rate=0,
+                        discount_rate="0",
+                        source="surcharges",
+                        student=False,
+                        zone=zone,
+                        addkg=0,
+                        surcharges=surcharge_value
+                    )
+                    crud.create_rate(db, rate)
+                    inserted += 1
+
+            return {
+                "message": f"✅ Surcharges file processed. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}.",
+                "skipped_rows": skipped_rows
+            }
+
+        # 🔹 COUNTRY-WEIGHT-RATE FILES - Only New Format
+        if "WEIGHT" not in df.columns:
+            raise HTTPException(status_code=400, detail="Excel must contain a 'WEIGHT' column in the first column.")
+
+        long_df = df.melt(id_vars=["WEIGHT"], var_name="Country", value_name="Retail Rate")
+        long_df.rename(columns={"WEIGHT": "Weight"}, inplace=True)
+
         long_df["Country"] = long_df["Country"].astype(str).str.strip().str.lower()
-        long_df["Source"] = file_type
         long_df["Weight"] = long_df["Weight"].apply(lambda w: float(str(w).replace("KG", "").strip()))
-        long_df["Retail Rate"] = long_df["Retail Rate"].apply(lambda r: float(r) if pd.notnull(r) else None)
+        long_df["Retail Rate"] = pd.to_numeric(long_df["Retail Rate"], errors="coerce")
+        long_df["Source"] = file_type
         long_df.dropna(subset=["Weight", "Retail Rate"], inplace=True)
 
         inserted = updated = skipped = 0
@@ -295,10 +592,19 @@ def upload_rates(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"❌ Failed to process file: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
-
-
+@app.delete("/clear-database")
+def clear_database(db: Session = Depends(get_db)):
+    try:
+        num_deleted = db.query(models.ShippingRate).delete()
+        db.commit()
+        return {"message": f"✅ Database cleared. Deleted {num_deleted} records."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"❌ Failed to clear database: {str(e)}")
 
 
 

@@ -6,11 +6,11 @@ type DoubleTriangleSVGProps = {
   className2?: string;
 };
 
-const AniamtedTriangle: React.FC<DoubleTriangleSVGProps> = ({
+const AnimatedTriangle: React.FC<DoubleTriangleSVGProps> = ({
   className1,
   className2,
 }) => (
-  <div className="hidden xl:block ">
+  <div className="sm:block  hidden ">
     <svg
       viewBox="0 0 200 200"
       className={className1}
@@ -66,4 +66,4 @@ const AniamtedTriangle: React.FC<DoubleTriangleSVGProps> = ({
   </div>
 );
 
-export default AniamtedTriangle;
+export default AnimatedTriangle;

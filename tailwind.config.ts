@@ -8,7 +8,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      
+      screens: {
+        'xmd': '850px', 
+        'xsm': '300px', 
+
+      },      
       fontFamily: {
         poppins: ["var(--font-poppins)", "sans-serif"],
         geist: ["var(--font-geist-sans)", "sans-serif"],

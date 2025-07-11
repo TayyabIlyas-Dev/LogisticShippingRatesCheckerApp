@@ -1,28 +1,36 @@
 export type ShippingRate = {
   original: number;
   discounted: number;
-  student?: boolean; // NEW
-  zone?: string | null; // NEW
+  student?: boolean; 
+  zone?: string | null; 
+  addkg?: number | null; 
+  type?: string;
+  surcharges?: number; // ✅ added to include surcharge info
 };
 
 export const docsData: Record<string, ShippingRate> = {};
 export const pkgData: Record<string, ShippingRate> = {};
 export const discountData: Record<string, number> = {};
+export const surchargesData: Record<string, number> = {}; // ✅ NEW
 
-// fetchShippingRates.ts
 export async function fetchShippingRates(): Promise<{
   countries: string[];
   weights: number[];
   docsData: Record<string, ShippingRate>;
   pkgData: Record<string, ShippingRate>;
+  addkgData: Record<string, ShippingRate>;
+  surchargesData: Record<string, number>; // ✅ NEW
 }> {
   try {
-    const res = await fetch('https://c8ebe687-3159-412a-b8ef-96340f3a69dc-00-1gvs8vvnrpohg.sisko.replit.dev/all-rates');
+    const res = await fetch('http://127.0.0.1:8000/all-rates');
     const json = await res.json();
-
     const records = json.data;
+
     const docs: Record<string, ShippingRate> = {};
     const pkg: Record<string, ShippingRate> = {};
+    const addkg: Record<string, ShippingRate> = {};
+    const surcharges: Record<string, number> = {}; // ✅ NEW
+
     const countrySet = new Set<string>();
     const weightSet = new Set<number>();
 
@@ -38,10 +46,19 @@ export async function fetchShippingRates(): Promise<{
         discounted,
         student: item.Student ?? false,
         zone: item.Zone ?? null,
+        addkg: item.Addkg ?? null,
+        type: item.Type,
       };
 
       if (item.Type === "docs") docs[key] = rate;
       else if (item.Type === "non-docs") pkg[key] = rate;
+      else if (item.Type === "add-kg") addkg[key] = rate;
+      else if (item.Type === "sur-charges") {
+        const normalizedCountry = item.Country?.toLowerCase().trim();
+        if (normalizedCountry && item.Surcharges > 0) {
+          surcharges[normalizedCountry] = item.Surcharges;
+        }
+      }
 
       countrySet.add(item.Country);
       weightSet.add(item.Weight);
@@ -52,9 +69,11 @@ export async function fetchShippingRates(): Promise<{
       weights: Array.from(weightSet).sort((a, b) => a - b),
       docsData: docs,
       pkgData: pkg,
+      addkgData: addkg,
+      surchargesData: surcharges, // ✅ return
     };
   } catch (err) {
     console.error("❌ Failed to fetch or parse shipping rates:", err);
-    return { countries: [], weights: [], docsData: {}, pkgData: {} };
+    return { countries: [], weights: [], docsData: {}, pkgData: {}, addkgData: {}, surchargesData: {} };
   }
 }

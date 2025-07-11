@@ -22,7 +22,7 @@ export default function PageLoader() {
     useEffect(() => {
         const timer = setTimeout(() => {
             setShowText(true);
-        }, 300); // 0.4 sec
+        }, 200); 
 
         return () => clearTimeout(timer);
     }, []);
@@ -31,19 +31,20 @@ export default function PageLoader() {
 
     return (
         <div className="fixed inset-0  z-50 flex items-center justify-center backdrop-blur-md bg-black/30">
-            <div className="w-[23vw] h-[25vh] relative ">
+            <div className="w-[30vw] h-[34vh] sm:w-[14vw] sm:h-[16vh] relative ">
                 {/* Ye tumhara text */}
 
                 <div className="z-10">
 
                     <Lottie animationData={animationData} loop={true} />
                 </div>
-                <p
-                    className={`absolute -bottom-[56%] left-[41%] px-0 py-2 z-50 text-2xl font-bold bg-transparent
-        transition-opacity duration-500 hidden xl:block
-        ${showText ? "opacity-100" : "opacity-0"}
-      `}
-                >                    <span className="textColor ">
+                {/* <p
+                    className={`absolute -bottom-[56%] left-[41%] px-0 py-2 z-50 text-2xl blur-[1px] hover:blur-none font-bold bg-transparent
+                               transition-opacity duration-500 hidden xl:block
+                                   ${showText ? "opacity-100" : "opacity-0"}
+                           `}
+                >
+                    <span className="textColor ">
                         M
                     </span>
                     <span className="text-black">
@@ -52,7 +53,7 @@ export default function PageLoader() {
                     <span className="text-textColor">
                         P
                     </span>
-                </p>
+                </p> */}
             </div>
         </div>
     );

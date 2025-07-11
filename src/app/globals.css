@@ -83,14 +83,50 @@ body {
   background: linear-gradient(145deg, #e65d2f9f, #ff8c00);
 }
 
+/* text animation */
+.text-slide-overlay {
+  background: linear-gradient(
+    120deg,
+    #f97316 30%,
+    #f97316 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: slideOverlay 4s linear infinite;
+}
+
+@keyframes slideOverlay {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+
 /* floating triangles */
 @keyframes float {
-  0% { transform: translateY(0) rotate(50deg); }
-  50% { transform: translateY(-6px) rotate(50deg); }
-  100% { transform: translateY(0) rotate(50deg); }
+  0% { transform: translateY(0) rotate(12deg); }
+  50% { transform: translateY(-4px) rotate(12deg); }
+  100% { transform: translateY(0) rotate(12deg); }
 }
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+
+/* floating triangles orange */
+@keyframes float2 {
+  0% { transform: translateX(-2px) rotate(260deg); }
+  50% { transform: translatex(-5px) rotate(262deg); }
+  100% { transform: translateX(-2px) rotate(260deg); }
+}
+.animate-float2 {
+  animation: float2 4s ease-in-out infinite;
 }
 
 

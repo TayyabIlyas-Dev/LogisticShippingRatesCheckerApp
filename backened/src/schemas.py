@@ -10,6 +10,9 @@ class ShippingRateBase(BaseModel):
     source: str
     student: Optional[bool] = False
     zone: Optional[str] = None
+    addkg: Optional[float] = None 
+    surcharges: Optional[float] = None  
+
 
 class ShippingRateCreate(ShippingRateBase):
     pass
