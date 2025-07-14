@@ -129,60 +129,67 @@ export default function ShippingRates() {
     // 🔁 Utility function to update rateData
     const updateRateData = useCallback(() => {
         if (!selectedCountry || !selectedWeight) {
-            setRateData({ original: 0, discounted: 0, discountDollar: 0, surcharge: 0 }); // ✅ include surcharge
+            setRateData({ original: 0, discounted: 0, discountDollar: 0, surcharge: 0 });
             return;
         }
+    
+        // 🔒 Special rule for DOCS: above 2kg → all rates = 0, only surcharge apply
+        if (active === 'docs' && selectedWeight > 2) {
+            const surcharge = surchargesData[selectedCountry.toLowerCase()] || 0;
+            setRateData({
+                original: 0 ,
+                discounted: 0,
+                discountDollar: 0,
+                surcharge,
+            });
+            return;
+        }
+    
         const key = `${selectedCountry}_${selectedWeight}`;
         const baseData = active === 'docs' ? docsData[key] : pkgData[key];
-
-        // ✅ Discounted as-is from selected weight
         const discounted = baseData?.discounted || 0;
-
-
-        // ✅ Always use 25kg as base if weight > 25
+    
+        // Use 25kg as base if weight > 25 (pkg only)
         let originalBaseKey = key;
         if (selectedWeight > 25) {
             originalBaseKey = `${selectedCountry}_25`;
         }
-
+    
         const baseOriginalData =
             active === 'docs' ? docsData[originalBaseKey] : pkgData[originalBaseKey];
-
+    
         let original = baseOriginalData?.original || 0;
-
-
-        // ✅ Add AddKG charge if applicable 
-        if (selectedWeight > 25) {
+    
+        // 📦 AddKG apply only for 'pkg'
+        if (active === 'pkg' && selectedWeight > 25) {
             const matchedAddkg = Object.entries(addkgData).find(([key, val]) => {
                 const countryFromKey = key.split("_")[0].toLowerCase();
                 return countryFromKey === selectedCountry.toLowerCase() && val.addkg;
             });
-
+    
             const addkgRate = matchedAddkg?.[1] ?? null;
-
+    
             if (addkgRate?.addkg) {
                 const weightDiff = selectedWeight - 25;
                 const fullUnits = Math.floor(weightDiff);
                 const halfUnit = weightDiff % 1 !== 0 ? 0.5 : 0;
                 const addCharge = (fullUnits + halfUnit) * addkgRate.addkg;
-
-                original += addCharge; // ✅ Add charge to base
+                original += addCharge;
             }
         }
-        // ✅ Add surcharge if it exists
+    
+        // ✅ Surcharge always apply
         const surcharge = surchargesData[selectedCountry.toLowerCase()] || 0;
         original += surcharge;
-
-
+    
         setRateData({
             original,
             discounted,
             discountDollar: original - discounted,
             surcharge,
-
         });
-    }, [selectedCountry, selectedWeight, active, docsData, pkgData, addkgData]);
-
+    }, [selectedCountry, selectedWeight, active, docsData, pkgData, addkgData, surchargesData]);
+    
 
 
     useEffect(() => {
