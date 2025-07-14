@@ -228,8 +228,8 @@ export default function ShippingRates() {
 
         try {
 
-            // const res = await fetch('https://c8ebe687-3159-412a-b8ef-96340f3a69dc-00-1gvs8vvnrpohg.sisko.replit.dev/upload-rates', {
-            const res = await fetch('http://127.0.0.1:8000/upload-rates', {
+            const res = await fetch('https://06d75d5e-523a-4ae0-9015-f96e9ebb379b-00-2htr8edtkrdqn.pike.replit.dev:8000/upload-rates', {
+            // const res = await fetch('http://127.0.0.1:8000/upload-rates', {
 
                 method: 'POST',
                 body: formData,
