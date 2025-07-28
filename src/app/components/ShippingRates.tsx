@@ -742,7 +742,7 @@ export default function ShippingRates() {
                                 </p>
                                 {rateData.surcharge > 0 && rate && (
                                     <p className="text-xs sm:text-sm font-semibold text-red-500 pt-1 px-1">
-                                         Surcharges added Rs : {rateData.surcharge}
+                                         ⚠️ Surcharges added $ : {rateData.surcharge}
                                     </p>
                                 )}
 
