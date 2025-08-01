@@ -26,7 +26,7 @@ export async function fetchShippingRates(
   try {
     // const res = await fetch('https://06d75d5e-523a-4ae0-9015-f96e9ebb379b-00-2htr8edtkrdqn.pike.replit.dev:8000/all-rates');
     // const res = await fetch('http://127.0.0.1:8000/all-rates');
-const res = await fetch(`http://127.0.0.1:8000/${province}-rates`);
+const res = await fetch(`https://79e488e3-3feb-47f6-afc9-99f176e763b7-00-t6un1m7gnee5.pike.replit.dev/${province}-rates`);
 
 
     const json = await res.json();
