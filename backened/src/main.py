@@ -9,12 +9,9 @@ import re
 from sqlalchemy import func ,cast, String  # Add this import at the top
 from . import crud, models, schemas
 from .models import Base
+from fastapi import Query
+from fastapi import Request
 
-# Database Setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./shippingrates.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base.metadata.create_all(bind=engine)
 
 # FastAPI App
 app = FastAPI()
@@ -28,53 +25,120 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 📌 Get session based on province
+def get_session(province: str):
+    db_path = f"sqlite:///./shippingrates_{province}.db"
+    engine = create_engine(db_path, connect_args={"check_same_thread": False})
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    return SessionLocal()
 
-def normalize_zone(zone_str: str) -> str:
-    zone_float = float(zone_str)
-    return str(int(zone_float)) if zone_float.is_integer() else str(zone_float)
 
-
-# Dependency
-def get_db():
+def get_db(province: str):
+    db_path = f"sqlite:///./shippingrates_{province}.db"
+    engine = create_engine(db_path, connect_args={"check_same_thread": False})
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-# Root Route
+def normalize_zone(zone_str: str) -> str:
+    zone_float = float(zone_str)
+    return str(int(zone_float)) if zone_float.is_integer() else str(zone_float)
+
+def ensure_table_exists_for(province: str):
+    db_path = f"sqlite:///./shippingrates_{province}.db"
+    engine = create_engine(db_path, connect_args={"check_same_thread": False})
+    from .models import Base
+    Base.metadata.create_all(bind=engine)
+
+
+for province in ["sindh", "punjab", "balochistan"]:
+    ensure_table_exists_for(province)
+
+# Dependency
+
 @app.get("/")
 async def read_root():
     return {"message": "Hello from API"}
 
-@app.get("/all-rates")
-def get_all_rates(db: Session = Depends(get_db)):
+# ✅ Common function to reuse
+def get_province_rates(province: str):
+    db = get_session(province)
     rates = crud.get_all_rates(db)
-    return {"data": [
-        {
-            "Country": r.country,
-            "Weight": r.weight,
-            "Type": r.type,
-            "Retail Rate": r.original_rate,
-            "Discount Rate": r.discount_rate,
-            "Student": r.student,
-            "Zone": r.zone,
-            "Addkg": r.addkg,
-            "Surcharges": r.surcharges  
+    return {
+        "province": province,
+        "data": [
+            {
+                "Country": r.country,
+                "Weight": r.weight,
+                "Type": r.type,
+                "Retail Rate": r.original_rate,
+                "Discount Rate": r.discount_rate,
+                "Student": r.student,
+                "Zone": r.zone,
+                "Addkg": r.addkg,
+                "Surcharges": r.surcharges
+            } for r in rates
+        ]
+    }
 
-        } for r in rates
-    ]}
+# 📍 Sindh
+@app.get("/sindh-rates")
+def get_sindh_rates():
+    return get_province_rates("sindh")
+
+# 📍 Punjab
+@app.get("/punjab-rates")
+def get_punjab_rates():
+    return get_province_rates("punjab")
+
+# 📍 Balochistan
+@app.get("/balochistan-rates")
+def get_balochistan_rates():
+    return get_province_rates("balochistan")
 
 
+@app.get("/all-rates")
+def get_all_rates():
+    all_data = []
+    for province in ["sindh", "punjab", "balochistan"]:
+        session = get_session(province)
+        rates = crud.get_all_rates(session)
+        all_data.append({
+            "province": province,
+            "data": [
+                {
+                    "Country": r.country,
+                    "Weight": r.weight,
+                    "Type": r.type,
+                    "Retail Rate": r.original_rate,
+                    "Discount Rate": r.discount_rate,
+                    "Student": r.student,
+                    "Zone": r.zone,
+                    "Addkg": r.addkg,
+                    "Surcharges": r.surcharges
+                } for r in rates
+            ]
+        })
+    return {"rates": all_data}
+
+
+def get_db_for_upload(province: str = Form(...)):
+    return next(get_db(province))
 
 @app.post("/upload-rates")
 def upload_rates(
+    request: Request,
     file: UploadFile = File(...),
+    province: str = Form(...),
     file_type: str = Form(...),
     student: bool = Form(False),
-       sheet: int = Form(1),
-    db: Session = Depends(get_db)
+    sheet: int = Form(1),
+    db: Session = Depends(get_db_for_upload)
 ):
+    # db = next(get_db(province)) 
     if not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload an Excel file.")
 
@@ -279,7 +343,7 @@ def upload_rates(
                         skipped_rows.append(f"{country} - {weight_val}kg - non-docs (not found)")
 
             return {
-                "message": f"✅ Strict pkg_discount processed. Updated: {updated}, Skipped: {skipped}.",
+                "message": f"✅ Strictly pkg_discount processed. Updated: {updated}, Skipped: {skipped}.",
                 "skipped_rows": skipped_rows
             }
 
@@ -597,16 +661,20 @@ def upload_rates(
             os.remove(temp_path)
 
 
+def get_db_with_query_param(province: str = Query(...)):
+    return next(get_db(province))
+
 @app.delete("/clear-database")
-def clear_database(db: Session = Depends(get_db)):
+def clear_database(
+    province: str = Query(...),
+    db: Session = Depends(get_db_with_query_param)
+):
     try:
         num_deleted = db.query(models.ShippingRate).delete()
         db.commit()
-        return {"message": f"✅ Database cleared. Deleted {num_deleted} records."}
+        return {"message": f"{num_deleted} lines removed from {province} database"}  # ✅ fixed
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"❌ Failed to clear database: {str(e)}")
-
-
 
 
 

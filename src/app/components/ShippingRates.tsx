@@ -35,6 +35,7 @@ export default function ShippingRates() {
     });
 
     const [rate, setRate] = useState<string | null>(null); // default = null
+
     const [weightInput, setWeightInput] = useState('');
     const [docsData, setDocsData] = useState<Record<string, { original: number; discounted: number }>>({});
     const [pkgData, setPkgData] = useState<Record<string, { original: number; discounted: number }>>({});
@@ -62,7 +63,7 @@ export default function ShippingRates() {
     const [addkgData, setAddkgData] = useState<Record<string, ShippingRate>>({});
     const [surchargesData, setSurchargesData] = useState<Record<string, number>>({});
 
-
+    const [province, setProvince] = useState<'sindh' | 'punjab' | 'balochistan'>('sindh');
 
 
 
@@ -109,7 +110,6 @@ export default function ShippingRates() {
         return [...matching, ...rest];
     }, [active, selectedCountry, weightInput, docsData, pkgData]);
 
-    // fetch daily dollar rate 
     useEffect(() => {
         async function fetchRate() {
             try {
@@ -126,49 +126,56 @@ export default function ShippingRates() {
         fetchRate();
     }, []);
 
+
+
+
+
+
+
+
     // 🔁 Utility function to update rateData
     const updateRateData = useCallback(() => {
         if (!selectedCountry || !selectedWeight) {
             setRateData({ original: 0, discounted: 0, discountDollar: 0, surcharge: 0 });
             return;
         }
-    
+
         // 🔒 Special rule for DOCS: above 2kg → all rates = 0, only surcharge apply
         if (active === 'docs' && selectedWeight > 2) {
             const surcharge = surchargesData[selectedCountry.toLowerCase()] || 0;
             setRateData({
-                original: 0 ,
+                original: 0,
                 discounted: 0,
                 discountDollar: 0,
                 surcharge,
             });
             return;
         }
-    
+
         const key = `${selectedCountry}_${selectedWeight}`;
         const baseData = active === 'docs' ? docsData[key] : pkgData[key];
         const discounted = baseData?.discounted || 0;
-    
+
         // Use 25kg as base if weight > 25 (pkg only)
         let originalBaseKey = key;
         if (selectedWeight > 25) {
             originalBaseKey = `${selectedCountry}_25`;
         }
-    
+
         const baseOriginalData =
             active === 'docs' ? docsData[originalBaseKey] : pkgData[originalBaseKey];
-    
+
         let original = baseOriginalData?.original || 0;
-    
+
         // 📦 AddKG apply only for 'pkg'
         if (active === 'pkg' && selectedWeight > 25) {
             const matchedAddkg = Object.entries(addkgData).find(([key, val]) => {
                 const countryFromKey = key.split("_")[0].toLowerCase();
                 return countryFromKey === selectedCountry.toLowerCase() && val.addkg;
             });
-    
+
             const addkgRate = matchedAddkg?.[1] ?? null;
-    
+
             if (addkgRate?.addkg) {
                 const weightDiff = selectedWeight - 25;
                 const fullUnits = Math.floor(weightDiff);
@@ -177,11 +184,11 @@ export default function ShippingRates() {
                 original += addCharge;
             }
         }
-    
+
         // ✅ Surcharge always apply
         const surcharge = surchargesData[selectedCountry.toLowerCase()] || 0;
         original += surcharge;
-    
+
         setRateData({
             original,
             discounted,
@@ -189,7 +196,7 @@ export default function ShippingRates() {
             surcharge,
         });
     }, [selectedCountry, selectedWeight, active, docsData, pkgData, addkgData, surchargesData]);
-    
+
 
 
     useEffect(() => {
@@ -202,7 +209,8 @@ export default function ShippingRates() {
 
     useEffect(() => {
         async function loadRates() {
-            const { countries, weights, docsData, pkgData, addkgData, surchargesData } = await fetchShippingRates();
+            const { countries, weights, docsData, pkgData, addkgData, surchargesData } = await fetchShippingRates(province);
+
             setCountries(countries);
             setWeights(weights);
             setDocsData(docsData);
@@ -213,7 +221,7 @@ export default function ShippingRates() {
         }
 
         loadRates();
-    }, []);
+    }, [province]);
     // Upload handler
     async function handleUpload(e: React.FormEvent) {
         e.preventDefault();
@@ -232,11 +240,12 @@ export default function ShippingRates() {
         formData.append('student', String(studentChecked));
         formData.append('sheet', String(sheetNumber));
 
+        formData.append('province', province); // 👈 Add this line
 
         try {
 
-            const res = await fetch('https://06d75d5e-523a-4ae0-9015-f96e9ebb379b-00-2htr8edtkrdqn.pike.replit.dev:8000/upload-rates', {
-            // const res = await fetch('http://127.0.0.1:8000/upload-rates', {
+            // const res = await fetch('https://06d75d5e-523a-4ae0-9015-f96e9ebb379b-00-2htr8edtkrdqn.pike.replit.dev:8000/upload-rates', {
+            const res = await fetch('http://127.0.0.1:8000/upload-rates', {
 
                 method: 'POST',
                 body: formData,
@@ -281,37 +290,33 @@ export default function ShippingRates() {
 
 
     const handleClear = async () => {
-        const confirm = window.confirm('Are you sure you want to clear the entire database?')
-        if (!confirm) return
+        const confirm = window.confirm(`Are you sure you want to clear the entire database of ${province} ?`);
+        if (!confirm) return;
 
-        setLoading(true)
-        setMessage('')
+        setLoading(true);
+        setMessage('');
 
         try {
-            const res = await fetch('/api/clear-database', {
+            const res = await fetch(`/api/clear-database?province=${province}`, {
                 method: 'DELETE',
-            })
+            });
 
-            const data = await res.json()
+            const data = await res.json();
             if (!res.ok) {
-                setMessage(`❌ Error: ${data.error}`)
+                setMessage(`❌ Error: ${data.error}`);
             } else {
-                setMessage(`✅ ${data.message}`)
+                setMessage(`✅ ${data.message}`);
             }
 
-            // 🔻 Auto-clear message after 3 seconds
-            setTimeout(() => {
-                setMessage('')
-            }, 10000)
+            setTimeout(() => setMessage(''), 10000);
         } catch (err) {
-            setMessage('❌ Network or server error')
-            setTimeout(() => {
-                setMessage('')
-            }, 10000)
+            setMessage('❌ Network or server error');
+            setTimeout(() => setMessage(''), 10000);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    };
+
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -384,7 +389,7 @@ export default function ShippingRates() {
 
 
                     <div className="w-full max-w-xl flex items-center  flex-col relative">
-                        <h1 className="py-3 text-2xl md:text-3xl font-semibold text-center leading-[1] mb-2 text-black tracking-tight uppercase">Shipping Rates</h1>
+                        <h1 className="py-3 text-2xl md:text-3xl font-semibold text-center leading-[1] mb-2 text-black tracking-tight uppercase "><span className="uppercase">{province} </span> Shipping Rates</h1>
 
                         <SignedIn>      {/* Excel Upload UI */}
                             {isAdmin ? (
@@ -392,9 +397,7 @@ export default function ShippingRates() {
                                     <form onSubmit={handleUpload} className="mb-6 py-2 flex flex-col sm:flex-row flex-wrap items-center gap-3 w-full justify-center">
                                         {/* Dropdown for file type */}
 
-                                        <div className='flex flex-col sm:flex-row gap-3 items-center w-full'>
-
-                                            <div className="flex gap-2 items-center text-black">
+                                        <div className="flex gap-2 items-center text-black">
                                             <div className="relative inline-block text-left" ref={dropdownRef}>
                                                 <button
                                                     onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -404,7 +407,7 @@ export default function ShippingRates() {
                                                 </button>
 
                                                 {dropdownOpen && (
-                                                    <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                                                    <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                                                         <button
                                                             onClick={handleClear}
                                                             disabled={loading}
@@ -417,34 +420,49 @@ export default function ShippingRates() {
 
 
                                             </div>
+                                            <label className="text-xs font-semibold">Province:</label>
+                                            <select
+                                                value={province}
+                                                onChange={e => setProvince(e.target.value as any)}
+                                                className="px-2 py-1 border border-gray-300 rounded-full text-xs focus:outline-none"
+                                                disabled={uploading}
+                                            >
+                                                <option value="sindh">Sindh</option>
+                                                <option value="punjab">Punjab</option>
+                                                <option value="balochistan">Balochistan</option>
+                                            </select>
+                                        </div>
+                                        <div className='flex flex-col sm:flex-row gap-3 items-center w-full'>
+
+                                            <div className="flex gap-2 items-center text-black">
+
 
                                                 <label className="text-xs font-semibold">Type:</label>
                                                 <select
                                                     value={uploadType}
                                                     onChange={e => setUploadType(e.target.value as any)}
-                                                    className="px-2 py-1 border border-gray-300 rounded-full text-xs focus:outline-none"
-                                                    disabled={uploading}
+                                                    className={`px-2 py-1 border border-gray-300 rounded-full focus:outline-none ${uploadType.length > 10 ? 'text-[10px]' : 'text-xs'
+                                                        }`} disabled={uploading}
                                                 >
                                                     <option value="retail">PKG Rates</option>
-                                                    <option value="pkg_discount">PKG Discount</option>
+                                                    <option value="pkg_discount">PKG Discount (Bigbox)</option>
                                                     <option value="zones">Zones Countries</option>
                                                     <option value="zones_docs">Zones Docs</option>       {/* ✅ NEW */}
                                                     <option value="zones_pkg">Zones PKG</option>         {/* ✅ NEW */}
                                                     <option value="docs">Docs Rates</option>
                                                     <option value="addkg">ADD PER KG</option>
                                                     <option value="zoneaddkg">Zone ADD PER KG</option>
-                                                    <option value="docs_discount">Docs Discount</option>
+                                                    {/* <option value="docs_discount">Docs Discount</option> */}
                                                     <option value="surcharges">Surcharges Rate</option>
 
-                                                    <option value="student">Student Discount</option>
-                                                    surcharges
+                                                    {/* <option value="student">Student Discount</option> */}
                                                 </select>
 
                                             </div>
 
 
                                             {/* Conditionally show student checkbox */}
-                                            {uploadType === 'student' && (
+                                            {/* {uploadType === 'student' && (
                                                 <label className="flex items-center gap-1 text-xs font-medium">
                                                     <input
                                                         type="checkbox"
@@ -454,7 +472,7 @@ export default function ShippingRates() {
                                                     />
                                                     I'm uploading a student file
                                                 </label>
-                                            )}
+                                            )} */}
 
                                             <div>
                                                 <input
@@ -472,7 +490,7 @@ export default function ShippingRates() {
                                                     min={1}
                                                     value={sheetNumber}
                                                     onChange={(e) => setSheetNumber(Number(e.target.value))}
-                                                    className="w-12 px-2 py-1 border border-gray-300 rounded-full text-xs focus:outline-none"
+                                                    className="w-10 px-1.5 py-1 border border-gray-300 text-center rounded-full text-xs focus:outline-none"
                                                     disabled={uploading}
                                                 />
                                             </div>
@@ -508,8 +526,8 @@ export default function ShippingRates() {
                                 </>
 
                             ) : (
-                                <p className="text-center text-sm text-red-600">
-                                    You are not a Admin So U not have permission to Upload Rates & discounts
+                                <p className="text-center text-sm pb-3 text-red-600">
+                                    Upload access is limited to Admins only.
                                 </p>
                             )}
 
@@ -517,7 +535,31 @@ export default function ShippingRates() {
                         </SignedIn>
 
                         {/* Top Controls */}
-                        <div className='w-full pl-16 pr-14 text-black'>
+                        <div className='w-full pl-16 pr-14 text-black flex flex-col justify-center items-center'>
+                            <div className="flex gap-4 items-center bg-[#f2f4f9]   border border-gray-300 rounded-full w-[320px] sm:w-full mx-1  mb-2  py-3  justify-center">
+                                {['sindh', 'punjab', 'balochistan'].map((prov) => {
+                                    const isSelected = province === prov;
+                                    return (
+                                        <label
+                                            key={prov}
+                                            className={`flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer transition
+          ${isSelected ? 'bg-[#f97316] text-white' : 'bg-[#e5e7ebb2] hover:bg-[#ced0d4e3] text-gray-700'}
+        `}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="province"
+                                                value={prov}
+                                                checked={isSelected}
+                                                onChange={(e) => setProvince(e.target.value as 'sindh' | 'punjab' | 'balochistan')}
+                                                className="hidden"
+                                            />
+                                            <span className="capitalize text-sm">{prov}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+
                             <div className='flex my-1 flex-col sm:flex-row gap-3 items-center justify-around w-full rounded-3xl'>
 
                                 <div className="flex items-center justify-center w-[320px] sm:w-[335px] bg-white px-4 py-2.5 rounded-3xl sm:rounded-br-none  shadow-md  mb-0">
@@ -725,7 +767,11 @@ export default function ShippingRates() {
 
                                     </div>
                                 </div>
+
+
+
                             </div>
+
                         </div>
 
                         {/* Main Exchange Box */}
@@ -737,21 +783,24 @@ export default function ShippingRates() {
                                 </div>
                                 <p className="text-xl sm:text-2xl pt-3 text-black">In Rs :
                                     <span className="textColor font-semibold pl-1">
+
                                         {rate ? (rateData.original * parseFloat(rate)).toFixed(2) : 'Loading...'}
                                     </span>
                                 </p>
                                 {rateData.surcharge > 0 && rate && (
                                     <p className="text-xs sm:text-sm font-semibold text-red-500 pt-1 px-1">
-                                         ⚠️ Surcharges added $ : {rateData.surcharge}
+                                        ⚠️ Surcharges added $ : {rateData.surcharge}
                                     </p>
                                 )}
 
                             </div>
 
                             <div className="absolute top-[54%] right-4 text-black  md:text-sm font-semibold pr-2">
+
+
                                 <span className='text-[10px]'>
 
-                                Dollar Rate : 
+                                    Dollar Rate :
                                 </span>
                                 <span className="textColor text-[12px]"> Rs {rate !== null ? Math.round(parseFloat(rate)) : 'N/A '}</span>
                             </div>
@@ -790,7 +839,7 @@ export default function ShippingRates() {
 
                                     <div className="w-full">
 
-                                        <p className="text-lg sm:text-xl pb-2 font-semibold textColor">Discounted Rates</p>
+                                        <p className="text-lg sm:text-xl pb-2 font-semibold textColor">BigBox Discount</p>
                                         <p className="text-base py-1 text-black underline">Rates In Dollar $</p>
                                         <div className="text-4xl font-bold textColor tracking-tight border-b-2 border-gray-400 ">
                                             {rateData.discounted.toFixed(2)}

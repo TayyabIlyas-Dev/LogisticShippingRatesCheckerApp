@@ -13,7 +13,9 @@ export const pkgData: Record<string, ShippingRate> = {};
 export const discountData: Record<string, number> = {};
 export const surchargesData: Record<string, number> = {}; // ✅ NEW
 
-export async function fetchShippingRates(): Promise<{
+export async function fetchShippingRates(
+  province: 'sindh' | 'punjab' | 'balochistan' = 'sindh'
+): Promise<{
   countries: string[];
   weights: number[];
   docsData: Record<string, ShippingRate>;
@@ -22,7 +24,11 @@ export async function fetchShippingRates(): Promise<{
   surchargesData: Record<string, number>; // ✅ NEW
 }> {
   try {
-    const res = await fetch('https://06d75d5e-523a-4ae0-9015-f96e9ebb379b-00-2htr8edtkrdqn.pike.replit.dev:8000/all-rates');
+    // const res = await fetch('https://06d75d5e-523a-4ae0-9015-f96e9ebb379b-00-2htr8edtkrdqn.pike.replit.dev:8000/all-rates');
+    // const res = await fetch('http://127.0.0.1:8000/all-rates');
+const res = await fetch(`http://127.0.0.1:8000/${province}-rates`);
+
+
     const json = await res.json();
     const records = json.data;
 
