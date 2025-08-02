@@ -8,7 +8,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    const res = await fetch(`http://localhost:8000/clear-database?province=${province}`, {
+    const res = await fetch(`https://79e488e3-3feb-47f6-afc9-99f176e763b7-00-t6un1m7gnee5.pike.replit.dev/clear-database?province=${province}`, {
       method: 'DELETE',
     })
 
