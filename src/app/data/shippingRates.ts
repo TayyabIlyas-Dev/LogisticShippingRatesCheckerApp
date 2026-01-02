@@ -25,7 +25,7 @@ export async function fetchShippingRates(
 }> {
   try {
     // const res = await fetch('http://127.0.0.1:8000/all-rates');
-    const res = await fetch(`https://72.62.78.125:8001/${province}-rates`);
+    const res = await fetch(`http://72.62.78.125:8001/${province}-rates`);
 
 
     const json = await res.json();
