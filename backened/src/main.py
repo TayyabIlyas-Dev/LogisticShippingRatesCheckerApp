@@ -16,6 +16,8 @@ from fastapi import Request
 # FastAPI App
 app = FastAPI()
 
+
+
 # Allow CORS for all origins (can restrict later)
 app.add_middleware(
     CORSMiddleware,
@@ -58,6 +60,11 @@ for province in ["sindh", "punjab", "balochistan"]:
     ensure_table_exists_for(province)
 
 # Dependency
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 @app.get("/")
 async def read_root():
